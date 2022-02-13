@@ -37,7 +37,7 @@ struct Point
 struct PsimConfig
 {
   char *user;
-  struct Point room[];
+  struct Point room[100];
 };
 
 bool onSegment(struct Point p, struct Point q, struct Point r)
@@ -120,13 +120,16 @@ bool isInside(struct Point polygon[], int n, struct Point p)
   return count & 1; // Same as (count%2 == 1)
 }
 
+
+//  * Examples:
+//  * point="12.444;-3.04"
 struct Point parse_point(char *data)
 {
     int length = 0;
     struct Point result;
     char *point = malloc(sizeof(char) * (strlen(data) + 1));
 
-    // 7 = длина константы point="
+    // 7 = длина константы 'point="'
     for (int i = 7; i < strlen(data); i++) {
       if (data[i] == '"') {
         break;
@@ -160,19 +163,6 @@ struct Point parse_point(char *data)
     return result;
 }
 
-char *parse_user(char *data) {
-    int length = 0;
-    char *user = malloc(sizeof(char) * (strlen(data) + 1));
-    for (int i = 6; i < strlen(data); i++) {
-      if (data[i] == '"') {
-        break;
-      }
-      user[length] = data[i];
-      length++;
-    }
-    return user;
-}
-
 
 /* PSIM decoder init */
 void *PSIM_Decoder_Init()
@@ -189,48 +179,77 @@ void *PSIM_Decoder_Init()
  * Examples:
  * user="petya" point="12.444;-3.04"
  */
-void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match, char *test)
+void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     bool result;
-    struct PsimConfig config[3] = {0};
+    mdebug1 ("Start decoder");
+    struct PsimConfig config[] = {
+        {
+          user: "vasya",
+          room: {{0, 0}, {10, 0}, {10, 10}, {0, 10}}
+        },
+        {
+          user: "petya",
+          room: {{10, 10}, {20, 10}, {20, 20}, {10, 20}}
+        },
+      };
 
     // Current user
     char *user_exist = strstr(lf->full_log,"user=\"");
     if (user_exist == NULL) {
+      mdebug1 ("User not exist");
       return (NULL);
     }
-    char *user = parse_user(user_exist);
+
+    int length = 0;
+    char user[50];
+    for (int i = 6; i < strlen(user_exist); i++) {
+      if (user_exist[i] == '"') {
+        break;
+      }
+      user[length] = user_exist[i];
+      length++;
+    }
+    mdebug1 ("User complite find");
     // printf("%s\n", user);
 
     // Current point
     char *point_exist = strstr(lf->full_log,"point=\"");
     if (point_exist == NULL) {
+      mdebug1 ("Point error");
       return (NULL);
     }
     struct Point current_point = parse_point(point_exist);
-    // struct Point room[] = {{0, 0}, {10, 0}, {10, 10}, {0, 10}};
+    mdebug1 ("Current point");
 
     // Бежим по конфиге, и ищем юзера
     // Если нашли, берем его комнату, и запихиваем в room
     // И считаем result от нашего правила
-    for (int i = 0; i < sizeof(config); i++) {
-      if (config[i].user == user) {
-        struct Point *room[] = config[i].room;
-        int n = sizeof(room) / sizeof(room[0]);
-        result = isInside(room, n, current_point);
-        
+    int config_size = sizeof(config)/sizeof(config[0]);
+    for (int i = 0; i < config_size; i++) {
+      mdebug1 ("start loop");
+      mdebug1 ("user = %s", user);
+      mdebug1 ("user[i] = %s", config[i].user);
+      if (strcmp(config[i].user,user) == 0) {
+        mdebug1 ("user match");
+        int n = sizeof(config[i].room) / sizeof(config[i].room[0]);
+        result = isInside(config[i].room, n, current_point);
+        mdebug1 ("result = %s", result ? "true" : "false");
         // Запихиваем результат в action, если есть совпадение
         if (result == true) {
+          mdebug1 ("result was writen in action");
           os_strdup("true", lf->action);
         }
       } else {
         // Else бежим по всем остальным правилам
+        mdebug1 ("continue");
         continue;
       }
     }
+    mdebug1 ("finish");
     return (NULL);
 }
 
 
 // os_strdup("result", lf->fields[].key);
-    // os_strdup("true", lf->fields[].value);
+// os_strdup("true", lf->fields[].value);
