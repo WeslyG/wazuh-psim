@@ -193,6 +193,8 @@ void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
           room: {{10, 10}, {20, 10}, {20, 20}, {10, 20}}
         },
       };
+    // Read decode xml and parse for config[]
+    // struct PsimConfig config[]
 
     // Current user
     char *user_exist = strstr(lf->full_log,"user=\"");
@@ -210,8 +212,7 @@ void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
       user[length] = user_exist[i];
       length++;
     }
-    mdebug1 ("User complite find");
-    // printf("%s\n", user);
+    mdebug1 ("User complite find = %s", user);
 
     // Current point
     char *point_exist = strstr(lf->full_log,"point=\"");
@@ -220,7 +221,7 @@ void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
       return (NULL);
     }
     struct Point current_point = parse_point(point_exist);
-    mdebug1 ("Current point");
+    mdebug1 ("Current point = %s", current_point);
 
     // Бежим по конфиге, и ищем юзера
     // Если нашли, берем его комнату, и запихиваем в room
@@ -228,10 +229,8 @@ void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
     int config_size = sizeof(config)/sizeof(config[0]);
     for (int i = 0; i < config_size; i++) {
       mdebug1 ("start loop");
-      mdebug1 ("user = %s", user);
-      mdebug1 ("user[i] = %s", config[i].user);
       if (strcmp(config[i].user,user) == 0) {
-        mdebug1 ("user match");
+        mdebug1 ("user match!");
         int n = sizeof(config[i].room) / sizeof(config[i].room[0]);
         result = isInside(config[i].room, n, current_point);
         mdebug1 ("result = %s", result ? "true" : "false");
@@ -249,7 +248,6 @@ void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
     mdebug1 ("finish");
     return (NULL);
 }
-
 
 // os_strdup("result", lf->fields[].key);
 // os_strdup("true", lf->fields[].value);

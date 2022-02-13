@@ -169,8 +169,6 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
     const char *xml_accumulate = "accumulate";
     const char *xml_nullfield = "json_null_field";
     const char *xml_arraystructure = "json_array_structure";
-    // const char *xml_room = "psim_room";
-    // const char *xml_user = "psim_user";
 
     int i = 0;
     OSDecoderInfo *NULL_Decoder_tmp = NULL;
