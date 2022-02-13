@@ -173,6 +173,8 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
                 cJSON_AddStringToObject(decoder,"plugin_decoder","PF_Decoder");
             } else if ((void *)node->osdecoder->plugindecoder == SymantecWS_Decoder_Exec) {
                 cJSON_AddStringToObject(decoder,"plugin_decoder","SymantecWS_Decoder");
+            } else if ((void *)node->osdecoder->plugindecoder == PSIM_Decoder_Exec) {
+                cJSON_AddStringToObject(decoder,"plugin_decoder","PSIM_Decoder");
             } else if ((void *)node->osdecoder->plugindecoder == SonicWall_Decoder_Exec) {
                 cJSON_AddStringToObject(decoder,"plugin_decoder","SonicWall_Decoder");
             } else if ((void *)node->osdecoder->plugindecoder == OSSECAlert_Decoder_Exec) {

@@ -68,7 +68,7 @@ typedef struct {
     w_expression_t * prematch;
     w_expression_t * program_name;
 
-    void (*plugindecoder)(void *lf, void *rule_hash, void *decoder_match);
+    void (*plugindecoder)(void *lf, void *rule_hash, void *decoder_match, void *room);
     void* (**order)(struct _Eventinfo *, char *, const char *);
 
     bool internal_saving;      ///< Used to free decoderinfo structure in wazuh-logtest

@@ -17,6 +17,10 @@
 void *PF_Decoder_Init(void);
 void *PF_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
+/* Plugin decoder for PSIM */
+void *PSIM_Decoder_Init(void);
+void *PSIM_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
+
 /* Plugin for Symantec Web Security */
 void *SymantecWS_Decoder_Init(void);
 void *SymantecWS_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);

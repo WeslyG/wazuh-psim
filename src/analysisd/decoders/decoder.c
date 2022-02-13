@@ -144,7 +144,7 @@ void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *deco
         while (child_node) {
             /* If we have an external decoder, execute it */
             if (nnode->plugindecoder) {
-                nnode->plugindecoder(lf, rules_hash, decoder_match);
+                nnode->plugindecoder(lf, rules_hash, decoder_match, 'room');
             } else if (nnode->regex) {
                 int i;
 
