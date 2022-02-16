@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include<stdbool.h>
+#include <stdbool.h>
 
 #ifndef min
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
@@ -36,7 +36,7 @@ struct Point
 
 struct PsimConfig
 {
-  char *user;
+  char user[50];
   struct Point room[100];
 };
 
@@ -127,6 +127,7 @@ struct Point parse_point(char *data)
 {
     int length = 0;
     struct Point result;
+    mdebug1 ("start parse_point");
     char *point = malloc(sizeof(char) * (strlen(data) + 1));
 
     // 7 = длина константы 'point="'
@@ -160,7 +161,45 @@ struct Point parse_point(char *data)
     result.x = atof(x);
     result.y = atof(y);
     free(point);
+    mdebug1 ("end parse_point");
+    mdebug1("result.x = %lf", result.x);
+    mdebug1("result.y = %lf", result.y);
     return result;
+}
+
+
+int parse_point_arr(char *input_data, struct Point *room) {
+  // char rule_input_data[]= "1,2.666;7.823,99.22;3.2,1.1;4.22,2.7;4.78,2.7;-142.583,999";
+  struct Point current_point;
+
+  int len = strlen(input_data);
+  int switcher = 1;
+  int state = 0;
+  int roomCount = 0;
+  struct Point tempPoint;
+
+  mdebug1("input = %s", input_data);
+
+  for (int i = 0; i <= len; i++) {
+    if (input_data[i] == ',' || input_data[i] == ';' || i == len) {
+      int q = i - state;
+      char tempStr[50] = "";
+      strncpy(tempStr, &input_data[state], q);
+
+      // printf("tmpstr = %s\n", tempStr);
+      if (switcher % 2 != 0) {
+        tempPoint.x = atof(tempStr);
+      } else {
+        tempPoint.y = atof(tempStr);
+        room[roomCount] = tempPoint;
+        roomCount++;
+        memset(&tempPoint, 0, sizeof(tempPoint));
+      }
+      switcher++;
+      state = i + 1;
+    }
+  }
+  return 0;
 }
 
 
@@ -181,20 +220,65 @@ void *PSIM_Decoder_Init()
  */
 void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
-    bool result;
+    OS_XML xml;
+    XML_NODE node;
+    bool result = false;
+    struct PsimConfig config[100] = {0};
+    char *psim_config = "etc/psim.xml";
+    
     mdebug1 ("Start decoder");
-    struct PsimConfig config[] = {
-        {
-          user: "vasya",
-          room: {{0, 0}, {10, 0}, {10, 10}, {0, 10}}
-        },
-        {
-          user: "petya",
-          room: {{10, 10}, {20, 10}, {20, 20}, {10, 20}}
-        },
-      };
-    // Read decode xml and parse for config[]
-    // struct PsimConfig config[]
+    mdebug1("config read start");
+    if (OS_ReadXML(psim_config, &xml) < 0) {
+        merror(XML_ERROR, psim_config, xml.err, xml.err_line);
+        return (OS_INVALID);
+    }
+    node = OS_GetElementsbyNode(&xml, NULL);
+    if (!node) {
+        mdebug1 ("!node");
+        return (0);
+    }
+    mdebug1 ("config read end");
+
+    if (!node[0]->element) {
+      mdebug1 ("Not rules in xml!");
+      merror(XML_ELEMNULL);
+      OS_ClearNode(node);
+      OS_ClearXML(&xml);
+      return (OS_INVALID);
+    }
+
+    int i = 0;
+    while(node[i]) {
+      
+      if (strcmp(node[i]->element, "rule") == 0) {
+          XML_NODE chld_node = NULL;
+          chld_node = OS_GetElementsbyNode(&xml, node[i]);
+
+          // Парсим юзера, копируем в конфигу
+          if (strcmp(chld_node[0]->element, "user") == 0) {
+            strncpy(config[i].user, chld_node[0]->content, strlen(chld_node[0]->content));
+          } else {
+            mdebug1("First node must be a <user>");
+          }
+
+          // Парсим комнату, копируем в конфигу
+          if (strcmp(chld_node[1]->element, "room") == 0) {
+            if (!parse_point_arr(chld_node[1]->content, config[i].room) == 0) {
+              mdebug1("ERROR with parsing room data");
+            } else {
+              mdebug1("Parsing room data fine");
+            }
+          } else {
+            mdebug1("Second node must be a <room>");
+          }
+          OS_ClearNode(chld_node);
+      } else {
+        mdebug1("Psim.xml root node must be a <rule>");
+      }
+      i++;
+    }
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
 
     // Current user
     char *user_exist = strstr(lf->full_log,"user=\"");
@@ -220,32 +304,59 @@ void *PSIM_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
       mdebug1 ("Point error");
       return (NULL);
     }
+    mdebug1 ("Start parse point");
     struct Point current_point = parse_point(point_exist);
-    mdebug1 ("Current point = %s", current_point);
+    mdebug1 ("Current point parsed");
 
     // Бежим по конфиге, и ищем юзера
     // Если нашли, берем его комнату, и запихиваем в room
     // И считаем result от нашего правила
     int config_size = sizeof(config)/sizeof(config[0]);
     for (int i = 0; i < config_size; i++) {
-      mdebug1 ("start loop");
+      // mdebug1 ("start loop");
       if (strcmp(config[i].user,user) == 0) {
-        mdebug1 ("user match!");
+        mdebug1 ("user match = %s", config[i].user);
         int n = sizeof(config[i].room) / sizeof(config[i].room[0]);
+        
+        mdebug1 ("XXX.0 = %lf", config[i].room[0].x);
+        mdebug1 ("YYY.0 = %lf", config[i].room[0].y);
+
+        mdebug1 ("XXX.1 = %lf", config[i].room[1].x);
+        mdebug1 ("YYY.1 = %lf", config[i].room[1].y);
+
+        mdebug1 ("XXX.2 = %lf", config[i].room[2].x);
+        mdebug1 ("YYY.2 = %lf", config[i].room[2].y);
+
+        mdebug1 ("XXX.3 = %lf", config[i].room[3].x);
+        mdebug1 ("YYY.3 = %lf", config[i].room[3].y);
+
         result = isInside(config[i].room, n, current_point);
         mdebug1 ("result = %s", result ? "true" : "false");
         // Запихиваем результат в action, если есть совпадение
         if (result == true) {
           mdebug1 ("result was writen in action");
           os_strdup("true", lf->action);
+          os_strdup(user, lf->dstuser);
+          
+          char *ress = (char*)malloc(sizeof(current_point.x) + sizeof(current_point.y) * sizeof(double));
+          sprintf(ress, "alert point is x=%lf, y=%lf", current_point.x, current_point.y);
+          os_strdup(ress, lf->extra_data);
+          free(ress);
         }
       } else {
         // Else бежим по всем остальным правилам
-        mdebug1 ("continue");
+        // mdebug1 ("continue");
         continue;
       }
     }
     mdebug1 ("finish");
+    result = false;
+    // free(user);
+    // free(user_exist);
+    // free(config_size);
+    // free(config);
+    // free(node);
+    // free(point_exist);
     return (NULL);
 }
 
